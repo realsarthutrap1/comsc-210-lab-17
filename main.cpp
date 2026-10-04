@@ -1,122 +1,140 @@
+// COMSC-210 | Lab 17 | Sarthak Pani
+// Adapted from the instructor's linked list starter.
+#include <cstdlib>
 #include <iostream>
 using namespace std;
 
-const int SIZE = 7;  
+const int SIZE = 7;
 
 struct Node {
     float value;
     Node *next;
 };
 
-void output(Node *);
+void addFront(Node *&head, float value);
+void addEnd(Node *&head, float value);
+bool deleteNode(Node *&head, int position);
+bool insertAfter(Node *head, int position, float value);
+void deleteList(Node *&head);
+void output(const Node *head);
 
 int main() {
     Node *head = nullptr;
-    int count = 0;
 
-    // create a linked list of size SIZE with random numbers 0-99
+    // Create seven nodes with random values from 0 through 99.
     for (int i = 0; i < SIZE; i++) {
-        int tmp_val = rand() % 100;
-        Node *newVal = new Node;
-        
-        // adds node at head
-        if (!head) {
-            head = newVal;
-            newVal->next = nullptr;
-            newVal->value = tmp_val;
-        }
-        else {
-            newVal->next = head;
-            newVal->value = tmp_val;
-            head = newVal;
-        }
+        addFront(head, rand() % 100);
     }
     output(head);
 
-    // deleting a node
-    cout << "Which node to delete? " << endl;
-    output(head);
+    cout << "Which node to delete? Use its numbered position.\n";
     int entry;
     cout << "Choice --> ";
-    cin >> entry;
-
-    // traverse that many times and delete that node
-    Node *current = head;
-    Node *prev = nullptr;  // start prev as nullptr to detect head deletion
-
-    for (int i = 0; i < (entry - 1); i++) {
-        prev = current;
-        current = current->next;
+    if (!(cin >> entry)) {
+        deleteList(head);
+        return 0;
     }
-
-    // at this point, delete current and reroute pointers
-    if (current) {
-        if (prev == nullptr) {
-            // deleting the head node
-            head = current->next;
-        } else {
-            prev->next = current->next;
-        }
-        delete current;
-        current = nullptr;
+    if (!deleteNode(head, entry)) {
+        cout << "Invalid node position.\n";
     }
     output(head);
 
-    // insert a node
-    cout << "After which node to insert 10000? " << endl;
-    count = 1;
-    current = head;
-    while (current) {
-        cout << "[" << count++ << "] " << current->value << endl;
-        current = current->next;
-    }
+    cout << "After which node should 10000 be inserted?\n"
+         << "Use an existing numbered position; the last node is allowed.\n";
     cout << "Choice --> ";
-    cin >> entry;
-
-    current = head;
-    prev = nullptr;  // reset prev to nullptr for same reason
-
-    for (int i = 0; i < entry; i++) {
-        prev = current;
-        current = current->next;
+    if (!(cin >> entry)) {
+        deleteList(head);
+        return 0;
     }
-
-    // at this point, insert a node between prev and current
-    Node *newnode = new Node;
-    newnode->value = 10000;
-    newnode->next = current;
-
-    if (prev == nullptr) {
-        // inserting before the head
-        head = newnode;
-    } else {
-        prev->next = newnode;
+    if (!insertAfter(head, entry, 10000)) {
+        cout << "Invalid node position.\n";
     }
     output(head);
 
-    // deleting the linked list
-    current = head;
-    while (current) {
-        head = current->next;
-        delete current;
-        current = head;
-    }
-    head = nullptr;
+    deleteList(head);
     output(head);
-
     return 0;
 }
 
-void output(Node *hd) {
-    if (!hd) {
+// Head is a reference because adding at the front updates the caller's head.
+void addFront(Node *&head, float value) {
+    head = new Node{value, head};
+}
+
+// Head is a reference because adding to an empty list updates the caller's head.
+void addEnd(Node *&head, float value) {
+    if (!head) {
+        addFront(head, value);
+        return;
+    }
+    Node *current = head;
+    while (current->next) {
+        current = current->next;
+    }
+    current->next = new Node{value, nullptr};
+}
+
+// Head is a reference because deleting the first node updates the caller's head.
+// Positions start at 1; invalid positions leave the list unchanged.
+bool deleteNode(Node *&head, int position) {
+    if (position < 1) {
+        return false;
+    }
+    Node *current = head;
+    Node *previous = nullptr;
+    for (int i = 1; current && i < position; i++) {
+        previous = current;
+        current = current->next;
+    }
+    if (!current) {
+        return false;
+    }
+    if (!previous) {
+        head = current->next;
+    } else {
+        previous->next = current->next;
+    }
+    delete current;
+    return true;
+}
+
+// Head is passed by value because inserting after a node never replaces head.
+// Position 1 means after the first node; the last node is also valid.
+bool insertAfter(Node *head, int position, float value) {
+    if (position < 1) {
+        return false;
+    }
+    Node *current = head;
+    for (int i = 1; current && i < position; i++) {
+        current = current->next;
+    }
+    if (!current) {
+        return false;
+    }
+    current->next = new Node{value, current->next};
+    return true;
+}
+
+// Head is a reference because clearing the list must reset the caller's head.
+void deleteList(Node *&head) {
+    while (head) {
+        Node *current = head;
+        head = head->next;
+        delete current;
+    }
+}
+
+// A pointer to const nodes lets printing inspect the list without changing it.
+void output(const Node *head) {
+    if (!head) {
         cout << "Empty list.\n";
         return;
     }
     int count = 1;
-    Node *current = hd;
+    const Node *current = head;
     while (current) {
-        cout << "[" << count++ << "] " << current->value << endl;
+        cout << "[" << count++ << "] " << current->value << '\n';
         current = current->next;
     }
-    cout << endl;
+    cout << '\n';
 }
