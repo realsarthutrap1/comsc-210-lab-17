@@ -1,7 +1,12 @@
 // COMSC-210 | Lab 17 | Sarthak Pani
 // Adapted from the instructor's linked list starter.
+#include <cerrno>
+#include <cctype>
+#include <cmath>
 #include <cstdlib>
 #include <iostream>
+#include <sstream>
+#include <string>
 using namespace std;
 
 const int SIZE = 7;
@@ -17,6 +22,9 @@ bool deleteNode(Node *&head, int position);
 bool insertAfter(Node *head, int position, float value);
 void deleteList(Node *&head);
 void output(const Node *head);
+int countNodes(const Node *head);
+bool readInteger(const string &prompt, int minimum, int maximum, int &value);
+bool readValue(float &value);
 
 int main() {
     Node *head = nullptr;
@@ -27,32 +35,74 @@ int main() {
     }
     output(head);
 
-    cout << "Which node to delete? Use its numbered position.\n";
-    int entry;
-    cout << "Choice --> ";
-    if (!(cin >> entry)) {
-        deleteList(head);
-        return 0;
-    }
-    if (!deleteNode(head, entry)) {
-        cout << "Invalid node position.\n";
-    }
-    output(head);
+    bool running = true;
+    while (running) {
+        cout << "\n1. Add front\n"
+             << "2. Add end\n"
+             << "3. Delete node\n"
+             << "4. Insert node (after an existing node)\n"
+             << "5. Delete list\n"
+             << "6. Print list\n"
+             << "7. Exit\n";
+        int choice;
+        if (!readInteger("Choice --> ", 1, 7, choice)) {
+            break;
+        }
 
-    cout << "After which node should 10000 be inserted?\n"
-         << "Use an existing numbered position; the last node is allowed.\n";
-    cout << "Choice --> ";
-    if (!(cin >> entry)) {
-        deleteList(head);
-        return 0;
+        float value;
+        int position;
+        switch (choice) {
+            case 1:
+            case 2:
+                if (!readValue(value)) {
+                    running = false;
+                    break;
+                }
+                if (choice == 1) {
+                    addFront(head, value);
+                } else {
+                    addEnd(head, value);
+                }
+                break;
+            case 3:
+            case 4:
+                if (!head) {
+                    cout << "Empty list. Add front or add end first.\n";
+                    break;
+                }
+                output(head);
+                if (choice == 4) {
+                    cout << "Insert AFTER an existing numbered node; "
+                         << "the last node is allowed.\n";
+                }
+                if (!readInteger("Node position (starting at 1) --> ",
+                                 1, countNodes(head), position)) {
+                    running = false;
+                    break;
+                }
+                if (choice == 3) {
+                    deleteNode(head, position);
+                } else if (readValue(value)) {
+                    insertAfter(head, position, value);
+                } else {
+                    running = false;
+                }
+                break;
+            case 5:
+                deleteList(head);
+                cout << "List cleared.\n";
+                break;
+            case 6:
+                output(head);
+                break;
+            case 7:
+                running = false;
+                break;
+        }
     }
-    if (!insertAfter(head, entry, 10000)) {
-        cout << "Invalid node position.\n";
-    }
-    output(head);
 
     deleteList(head);
-    output(head);
+    cout << "Goodbye.\n";
     return 0;
 }
 
@@ -137,4 +187,62 @@ void output(const Node *head) {
         current = current->next;
     }
     cout << '\n';
+}
+
+// Counting only reads nodes, so the caller's head does not need a reference.
+int countNodes(const Node *head) {
+    int count = 0;
+    while (head) {
+        count++;
+        head = head->next;
+    }
+    return count;
+}
+
+// Read a whole line so mixed text and fractional positions cannot slip through.
+// Value is a reference to return the validated number; false signals EOF.
+bool readInteger(const string &prompt, int minimum, int maximum, int &value) {
+    string line;
+    while (true) {
+        cout << prompt;
+        if (!getline(cin, line)) {
+            return false;
+        }
+        istringstream input(line);
+        int candidate;
+        if (input >> candidate) {
+            input >> ws;
+            if (input.eof() && candidate >= minimum && candidate <= maximum) {
+                value = candidate;
+                return true;
+            }
+        }
+        cout << "Enter a whole number from " << minimum << " to "
+             << maximum << ".\n";
+    }
+}
+
+// Value is a reference to return the user's number; false signals EOF.
+// strtof reports range errors, including values too small for a float.
+bool readValue(float &value) {
+    string line;
+    while (true) {
+        cout << "Value --> ";
+        if (!getline(cin, line)) {
+            return false;
+        }
+        char *end;
+        errno = 0;
+        float candidate = strtof(line.c_str(), &end);
+        bool hasNumber = end != line.c_str();
+        while (isspace(static_cast<unsigned char>(*end))) {
+            end++;
+        }
+        if (hasNumber && end == line.c_str() + line.size() &&
+            errno != ERANGE && isfinite(candidate)) {
+            value = candidate;
+            return true;
+        }
+        cout << "Enter a finite number within the float range.\n";
+    }
 }
